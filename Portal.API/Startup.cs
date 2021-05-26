@@ -1,27 +1,21 @@
 using HotChocolate;
-using HotChocolate.AspNetCore;
-using HotChocolate.Subscriptions;
-using HotChocolate.Types;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using Portal.API.Context;
+using Portal.API.GraphQL.Mutations;
 using Portal.API.GraphQL.Queries;
-using Portal.API.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Portal.API.Settings;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Portal.API
 {
+    //dotnet ef dbcontext scaffold "Server=pipesv;Database=aduasism3;User Id=sa;Password=Tesla7271" Microsoft.EntityFrameworkCore.SqlServer -o Aduasism3 -d -f
+
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -33,58 +27,45 @@ namespace Portal.API
 
         public void ConfigureServices(IServiceCollection services)
         {
-            //services.AddControllers();
+            services.AddCors();
 
             services.AddGraphQLServer()
             .AddQueryType<RootQuery>()
-            .AddProjections();
-            
-             
-            services.AddDbContext<AduasisContext>(options => options.UseSqlServer(Configuration["SqlServerConnectionString"]));
-            services.AddAuthorization();
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("wW7pPV7ngghwWxpNLc7N8SQPhjXcPQEMtHwpfiknpJqkr5aX1kSDsNnndqWLXWkx"));
-           
-            //services.AddAuthentication(HotChocolate.AspNetCore.Authorization);
+            .AddMutationType<RootMutation>()
+            .AddFiltering()
+            .AddProjections()
+            .AddAuthorization();
 
-            /*
-            services.AddSwaggerGen(c =>
-            {
-              //  c.SwaggerDoc("v1", new OpenApiInfo { Title = "Portal.API", Version = "v1" });
-            });*/
-
-            //.AddQueryType<Query>()
-            //.AddMutationType<Mutation>()
-            //.AddSubscriptionType<Subscription>();
-
+            services
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidIssuer = Configuration.GetSection("TokenSettings").GetValue<string>("Issuer"),
+                        ValidateIssuer = true,
+                        ValidAudience = Configuration.GetSection("TokenSettings").GetValue<string>("Audience"),
+                        ValidateAudience = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetSection("TokenSettings").GetValue<string>("Key"))),
+                        ValidateIssuerSigningKey = true
+                    };
+                });
+            services.Configure<TokenSettings>(Configuration.GetSection("TokenSettings"));
+            services.AddDbContext<AduasisContext>(options => options.UseSqlServer(Configuration["SqlServerConnectionString"]), ServiceLifetime.Transient);
         }
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseAuthentication();
             app.UseDeveloperExceptionPage();
             app.UseWebSockets();
             app.UseRouting();
+            app.UseCors(x => x
+              .AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              );
             app.UseEndpoints(endpoint => endpoint.MapGraphQL());
-
-            /*
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-
-                app.UseGraphQLPlayground();
-
-                //app.UseSwagger();
-                //app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Portal.API v1"));
-            }
-
-
-            app.UseRouting();
-
-            app.UseAuthorization();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapGraphQL();
-            });*/
         }
 
     }

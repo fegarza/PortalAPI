@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Portal.API.EntityFramework.Models;
 using Portal.API.Models;
 
 #nullable disable
@@ -17,6 +18,8 @@ namespace Portal.API.Context
         }
 
         public virtual DbSet<WebUsuario> WebUsuarios { get; set; }
+        public virtual DbSet<OcVehiculo> OcVehiculo { get; set; }
+
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -29,6 +32,16 @@ namespace Portal.API.Context
                 u.IdAplicacion,
                 u.Usuario
             });
+
+            modelBuilder.Entity<OcVehiculo>().HasKey(u => new
+            {
+                u.IdAlmacen,
+                u.IdTipoVehiculo,
+                u.NumeroVehiculo,
+                u.FechaArribo
+            });
+
+
         }
 
     }
